@@ -1,5 +1,4 @@
-build:
-	go run ./...
+.PHONY: run
 
-all: build
-	
+run:
+	go run ./... kube -v=5 to-local to-winkernel --kubeconfig=${HOME}/.kube/config
