@@ -1,3 +1,5 @@
+(pardon our dust, we are just initially starting this repo) please reach out in K8s sig-windows slack to help us with it !
+
 # windows-service-proxy
 
 Home for an out of tree Windows kube-proxy implementation based on KPNG.
