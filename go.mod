@@ -1,4 +1,4 @@
-module windows-service-proxy
+module sigs.k8s.io/windows-service-proxy
 
 go 1.19
 
