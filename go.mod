@@ -3,19 +3,25 @@ module sigs.k8s.io/windows-service-proxy
 go 1.19
 
 require (
+	github.com/Microsoft/hcsshim v0.9.4
 	github.com/prometheus/client_golang v1.14.0
 	github.com/spf13/cobra v1.6.1
+	github.com/spf13/pflag v1.0.5
+	k8s.io/api v0.26.0
+	k8s.io/apimachinery v0.26.0
 	k8s.io/client-go v0.26.0
+	k8s.io/component-base v0.25.2
 	k8s.io/klog/v2 v2.80.1
-	sigs.k8s.io/kpng/backends/windows/kernelspace v0.0.0-20230108201327-8afcc15982a4
+	k8s.io/kubernetes v1.13.0
+	k8s.io/utils v0.0.0-20221107191617-1a15be271d1d
+	sigs.k8s.io/kpng/api v0.0.0-20230107100853-0acec822fad8
 	sigs.k8s.io/kpng/client v0.0.0-20230108201327-8afcc15982a4
+	sigs.k8s.io/kpng/cmd v0.0.0-20230108201327-8afcc15982a4
 	sigs.k8s.io/kpng/server v0.0.0-20230108201327-8afcc15982a4
-	sigs.k8s.io/windows-service-proxy v0.0.0-20230109181846-f1cb6f66e3d6
 )
 
 require (
 	github.com/Microsoft/go-winio v0.4.17 // indirect
-	github.com/Microsoft/hcsshim v0.9.4 // indirect
 	github.com/beorn7/perks v1.0.1 // indirect
 	github.com/blang/semver/v4 v4.0.0 // indirect
 	github.com/cespare/xxhash v1.1.0 // indirect
@@ -48,8 +54,8 @@ require (
 	github.com/prometheus/client_model v0.3.0 // indirect
 	github.com/prometheus/common v0.37.0 // indirect
 	github.com/prometheus/procfs v0.8.0 // indirect
+	github.com/rogpeppe/go-internal v1.9.0 // indirect
 	github.com/sirupsen/logrus v1.8.1 // indirect
-	github.com/spf13/pflag v1.0.5 // indirect
 	go.opencensus.io v0.23.0 // indirect
 	golang.org/x/net v0.3.1-0.20221206200815-1e63c2f08a10 // indirect
 	golang.org/x/oauth2 v0.0.0-20221006150949-b44042a4b9c1 // indirect
@@ -64,15 +70,9 @@ require (
 	gopkg.in/inf.v0 v0.9.1 // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
-	k8s.io/api v0.26.0 // indirect
-	k8s.io/apimachinery v0.26.0 // indirect
-	k8s.io/component-base v0.25.2 // indirect
 	k8s.io/klog v1.0.0 // indirect
 	k8s.io/kube-openapi v0.0.0-20221012153701-172d655c2280 // indirect
-	k8s.io/kubernetes v1.13.0 // indirect
-	k8s.io/utils v0.0.0-20221107191617-1a15be271d1d // indirect
 	sigs.k8s.io/json v0.0.0-20220713155537-f223a00ba0e2 // indirect
-	sigs.k8s.io/kpng/api v0.0.0-20230107100853-0acec822fad8 // indirect
 	sigs.k8s.io/structured-merge-diff/v4 v4.2.3 // indirect
 	sigs.k8s.io/yaml v1.3.0 // indirect
 )
