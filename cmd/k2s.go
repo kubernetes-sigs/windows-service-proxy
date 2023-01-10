@@ -1,5 +1,5 @@
 /*
-Copyright 2021 The Kubernetes Authors.
+Copyright 2023 The Kubernetes Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -21,9 +21,12 @@ import (
 	"fmt"
 	"os"
 
-	"sigs.k8s.io/windows-service-proxy/pkg/storecmds"
-
 	"github.com/spf13/cobra"
+
+	"sigs.k8s.io/kpng/cmd/kpng/builder"
+
+	// kernelspace automatic backend register
+	_ "sigs.k8s.io/windows-service-proxy/backend/kernelspace"
 
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/tools/clientcmd"
@@ -67,7 +70,7 @@ func kube2storeCmd() *cobra.Command {
 		kube2storeCmdRun(ctx, store)
 	}
 
-	k2sCmd.AddCommand(storecmds.ToLocalCmd(ctx, store, kube2storeCmdSetup, run))
+	k2sCmd.AddCommand(builder.ToLocalCmd(ctx, store, kube2storeCmdSetup, run))
 
 	return k2sCmd
 }

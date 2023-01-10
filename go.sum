@@ -628,6 +628,7 @@ github.com/rogpeppe/fastuuid v0.0.0-20150106093220-6724a57986af/go.mod h1:XWv6So
 github.com/rogpeppe/fastuuid v1.2.0/go.mod h1:jVj6XXZzXRy/MSR5jhDC/2q6DgLz+nrA6LYCDYWNEvQ=
 github.com/rogpeppe/go-internal v1.3.0/go.mod h1:M8bDsm7K2OlrFYOpmOWEs/qY81heoFRclV5y23lUDJ4=
 github.com/rogpeppe/go-internal v1.9.0 h1:73kH8U+JUqXU8lRuOHeVHaa/SZPifC7BkcraZVejAe8=
+github.com/rogpeppe/go-internal v1.9.0/go.mod h1:WtVeX8xhTBvf0smdhujwtBcq4Qrzq/fJaraNFVN+nFs=
 github.com/russross/blackfriday/v2 v2.0.1/go.mod h1:+Rmxgy9KzJVeS9/2gXHxylqXiyQDYRxCVz55jmeOWTM=
 github.com/russross/blackfriday/v2 v2.1.0/go.mod h1:+Rmxgy9KzJVeS9/2gXHxylqXiyQDYRxCVz55jmeOWTM=
 github.com/safchain/ethtool v0.0.0-20190326074333-42ed695e3de8/go.mod h1:Z0q5wiBQGYcxhMZ6gUqHn6pYNLypFAvaL3UvgZLR0U4=
@@ -1201,10 +1202,10 @@ sigs.k8s.io/json v0.0.0-20220713155537-f223a00ba0e2 h1:iXTIw73aPyC+oRdyqqvVJuloN
 sigs.k8s.io/json v0.0.0-20220713155537-f223a00ba0e2/go.mod h1:B8JuhiUyNFVKdsE8h686QcCxMaH6HrOAZj4vswFpcB0=
 sigs.k8s.io/kpng/api v0.0.0-20230107100853-0acec822fad8 h1:RSV4FnXLedtU6rno5jIl9EosQEtMb9fWMQEdwZQSw6g=
 sigs.k8s.io/kpng/api v0.0.0-20230107100853-0acec822fad8/go.mod h1:vyNBPSveG5v1gFvk4giYC+8xqAL5Mi82n9vXuw54iWE=
-sigs.k8s.io/kpng/backends/windows/kernelspace v0.0.0-20230108201327-8afcc15982a4 h1:G8zlthYHVHk+DVDrhkjLE/KnQ4RWqVtlnUcHfAdfYaI=
-sigs.k8s.io/kpng/backends/windows/kernelspace v0.0.0-20230108201327-8afcc15982a4/go.mod h1:6/uFKdu1reahP6z29UZ8swRurvTNf6L5Lhi/zwklzhU=
 sigs.k8s.io/kpng/client v0.0.0-20230108201327-8afcc15982a4 h1:YFuVQtv0xaUCHbaL4EkTIInFfQAMYgRt6g07rc7zZI0=
 sigs.k8s.io/kpng/client v0.0.0-20230108201327-8afcc15982a4/go.mod h1:3RFiJPuPQ1susBeVzfXtBtGRV754fA7gfa+9NcZVQzA=
+sigs.k8s.io/kpng/cmd v0.0.0-20230108201327-8afcc15982a4 h1:6dLGjTaKSgoLPMgrcJvkW/vRSU+4jgE5hsEaqfxBQts=
+sigs.k8s.io/kpng/cmd v0.0.0-20230108201327-8afcc15982a4/go.mod h1:aNyS6eTtoI6ndhXYta5AOWmW5zvuE641aW95cBKysVE=
 sigs.k8s.io/kpng/server v0.0.0-20230108201327-8afcc15982a4 h1:XzXnAm87sbtgp2u5FQyMtxoqM6xRMoAqz18r6rA6JGk=
 sigs.k8s.io/kpng/server v0.0.0-20230108201327-8afcc15982a4/go.mod h1:rxIMtDqB/fZZ8ge5+SRQv4p8w7/rjA/QY8iUP0tC8zE=
 sigs.k8s.io/structured-merge-diff/v4 v4.0.1/go.mod h1:bJZC9H9iH24zzfZ/41RGcq60oK1F7G282QMXDPYydCw=
@@ -1212,8 +1213,6 @@ sigs.k8s.io/structured-merge-diff/v4 v4.0.2/go.mod h1:bJZC9H9iH24zzfZ/41RGcq60oK
 sigs.k8s.io/structured-merge-diff/v4 v4.0.3/go.mod h1:bJZC9H9iH24zzfZ/41RGcq60oK1F7G282QMXDPYydCw=
 sigs.k8s.io/structured-merge-diff/v4 v4.2.3 h1:PRbqxJClWWYMNV1dhaG4NsibJbArud9kFxnAMREiWFE=
 sigs.k8s.io/structured-merge-diff/v4 v4.2.3/go.mod h1:qjx8mGObPmV2aSZepjQjbmb2ihdVs8cGKBraizNC69E=
-sigs.k8s.io/windows-service-proxy v0.0.0-20230109181846-f1cb6f66e3d6 h1:w/pTUOK8j1TBMcH1X+sDk1XHkb+wBX+lTCDezNaszB0=
-sigs.k8s.io/windows-service-proxy v0.0.0-20230109181846-f1cb6f66e3d6/go.mod h1:6jWybJTwT6BZJtjxirkYGfANeWZRLhm1ogLXBAyMoac=
 sigs.k8s.io/yaml v1.1.0/go.mod h1:UJmg0vDUVViEyp3mgSv9WPwZCDxu4rQW1olrI1uml+o=
 sigs.k8s.io/yaml v1.2.0/go.mod h1:yfXDCHCao9+ENCvLSE62v9VSji2MKu5jeNfTrofGhJc=
 sigs.k8s.io/yaml v1.3.0 h1:a2VclLzOGrwOHDiV8EfBGhvjHvP46CtW5j6POvhYGGo=
