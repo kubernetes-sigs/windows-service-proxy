@@ -25,6 +25,10 @@ TOOLS_BIN_DIR := $(abspath $(TOOLS_DIR)/$(BIN_DIR))
 GOLANGCI_LINT_BIN := golangci-lint
 GOLANGCI_LINT := $(abspath $(TOOLS_BIN_DIR)/$(GOLANGCI_LINT_BIN))
 
+VERSION ?= $(shell git describe --tags --always `git rev-parse HEAD`)
+STAGING_REGISTRY ?= gcr.io/k8s-staging-windows-svc-proxy
+REGISRY ?= 
+
 all: build
 
 help:  # Display this help
@@ -69,3 +73,17 @@ $(GOLANGCI_LINT):
 	hack/ensure-golangci-lint.sh \
 		-b $(TOOLS_BIN_DIR) \
 		$(shell cat .github/workflows/golangci-lint.yml | grep [[:space:]]version | sed 's/.*version: //')
+
+# Contianer image building targets
+
+.PHONY: image
+image: 
+	REPOSITORY=$(REGISTRY) ./hack/build_windows_container.sh
+
+.PHONY: image-push
+image-push:
+	REPOSITORY=$(REGISTRY) VERSION=$(VERSION) ./hack/build_windows_container.sh --push
+
+.PHONY: release-staging
+release-staging:
+	REPOSITORY=$(STAGING_REGISTRY) VERSION=$(VERSION) ./hack/build_windows_container.sh --push
