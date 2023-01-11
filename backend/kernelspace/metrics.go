@@ -22,12 +22,12 @@ import (
 	//	"k8s.io/kubernetes/pkg/proxy/metrics"
 )
 
-var registerMetricsOnce sync.Once
+var registerMetricsOnce sync.Once // nolint
 
 // RegisterMetrics registers kube-proxy metrics for Windows modes.
 func RegisterMetrics() {
+	// todo(jayunit100): add metrics for kernelspace backend
 
-	// TODO Jay commenting these out for now
 	/**	registerMetricsOnce.Do(func() {
 		legacyregistry.MustRegister(metrics.SyncProxyRulesLatency)
 		legacyregistry.MustRegister(metrics.SyncProxyRulesLastTimestamp)

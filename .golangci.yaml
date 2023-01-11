@@ -1,0 +1,30 @@
+run:
+  timeout: 30m
+  skip-files:
+    - "^zz_generated.*"
+
+issues:
+  max-same-issues: 0
+  # Excluding configuration per-path, per-linter, per-text and per-source
+linters:
+  disable-all: true
+  enable: # please keep this alphabetized
+    - gocritic
+    - ineffassign
+    - staticcheck
+    - stylecheck
+    - unused
+
+linters-settings: # please keep this alphabetized
+  gocritic:
+    enabled-checks:
+      - equalFold
+      - boolExprSimplify
+  staticcheck:
+    checks: [
+      "all",
+    ]
+  stylecheck:
+    checks: [
+      "ST1019",  # Importing the same package multiple times.
+    ]
