@@ -22,11 +22,7 @@ import (
 	"os"
 
 	"github.com/spf13/cobra"
-
 	"sigs.k8s.io/kpng/cmd/kpng/builder"
-
-	// kernelspace automatic backend register
-	_ "sigs.k8s.io/windows-service-proxy/backend/kernelspace"
 
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/tools/clientcmd"
