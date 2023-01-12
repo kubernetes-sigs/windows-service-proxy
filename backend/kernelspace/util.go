@@ -359,13 +359,18 @@ func GetClusterIPByFamily(ipFamily v1.IPFamily, service *localv1.Service) string
 	return ""
 }
 
-// RequestsOnlyLocalTraffic checks if service requests OnlyLocal traffic.
-func RequestsOnlyLocalTraffic(service *localv1.Service) bool {
+// ExternalPolicyLocal checks if service has ETP = Local.
+func ExternalPolicyLocal(service *localv1.Service) bool {
 	if service.Type != string(v1.ServiceTypeLoadBalancer) &&
 		service.Type != string(v1.ServiceTypeNodePort) {
 		return false
 	}
 	return service.ExternalTrafficToLocal
+}
+
+// InternalPolicyLocal checks if service has ITP = Local.
+func InternalPolicyLocal(service *localv1.Service) bool {
+	return service.InternalTrafficToLocal
 }
 
 // MapIPsByIPFamily maps a slice of IPs to their respective IP families (v4 or v6)

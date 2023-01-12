@@ -26,7 +26,6 @@ import (
 	"sync"
 
 	v1 "k8s.io/api/core/v1"
-
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/client-go/tools/events"
@@ -232,14 +231,11 @@ func (info *BaseServiceInfo) HintsAnnotation() string {
 
 func (sct *ServiceChangeTracker) newBaseServiceInfo(port *localv1.PortMapping, service *localv1.Service) *BaseServiceInfo {
 	nodeLocalExternal := false
-	if RequestsOnlyLocalTraffic(service) {
+	if ExternalPolicyLocal(service) {
 		nodeLocalExternal = true
 	}
-	nodeLocalInternal := false
-	//TODO : CHECK InternalTrafficPolicy
-	// if utilfeature.DefaultFeatureGate.Enabled(features.ServiceInternalTrafficPolicy) {
-	// 	nodeLocalInternal = apiservice.RequestsOnlyLocalTrafficForInternal(service)
-	// }
+
+	nodeLocalInternal := InternalPolicyLocal(service)
 
 	v1Proto := v1.ProtocolTCP
 	if port.Protocol == localv1.Protocol_UDP {

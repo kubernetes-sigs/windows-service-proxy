@@ -338,10 +338,9 @@ func NewProxier(
 
 	klog.V(1).InfoS("Hns Network loaded", "hnsNetworkInfo", hnsNetworkInfo)
 	isDSR := config.EnableDSR
-	// todo(knabben) - review feature gates
-	/*if isDSR && !utilfeature.DefaultFeatureGate.Enabled(kubefeatures.WinDSR) {
-		return nil, fmt.Errorf("WinDSR feature gate not enabled")
-	}*/
+	if !isDSR {
+		return nil, fmt.Errorf("WinDSR option is not enabled. Use --enable-dsr.")
+	}
 	err = hcn.DSRSupported()
 	if isDSR && err != nil {
 		return nil, err
@@ -350,10 +349,6 @@ func NewProxier(
 	var sourceVip string
 	var hostMac string
 	if isOverlay(hnsNetworkInfo) {
-		// todo(knabben) - fix feature gates
-		/*if !true /*utilfeature.DefaultFeatureGate.Enabled(kubefeatures.WinOverlay) {
-			return nil, fmt.Errorf("WinOverlay feature gate not enabled")
-		}*/
 		err = hcn.RemoteSubnetSupported()
 		if err != nil {
 			return nil, err

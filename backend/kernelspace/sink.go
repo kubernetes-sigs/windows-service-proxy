@@ -62,14 +62,17 @@ var (
 
 	defaultHostname, _ = os.Hostname()
 	hostname           = flag.String("hostname", defaultHostname, "hostname")
-
 	clusterCIDR        = flag.String("cluster-cidr", "100.244.0.0/24", "cluster IPs CIDR")
 	sourceVip          = flag.String("source-vip", "100.244.206.65", "Source VIP")
-	enableDSR          = flag.Bool("enable-dsr", false, "Set this flag to enable DSR")
-	healthzBindAddress = flag.String("healthz-bind-address", "0.0.0.0:10256", "The IP address with port for the health check server to serve on (set to '0.0.0.0:10256' for all IPv4 interfaces and '[::]:10256' for all IPv6 interfaces). Set empty to disable.")
+	enableDSR          = flag.Bool("enable-dsr", true, "Set this flag to enable DSR")
 
-	winkernelConfig KubeProxyWinkernelConfiguration
+	healthzBindAddress = flag.String("healthz-bind-address", "0.0.0.0:10256", "The IP address with port for the health check server to serve on (set to '0.0.0.0:10256' for all IPv4 interfaces and '[::]:10256' for all IPv6 interfaces). Set empty to disable.")
+	winkernelConfig    KubeProxyWinkernelConfiguration
 )
+
+func init() {
+	flag.DurationVar(&syncPeriod, "sync-period-duration", 15*time.Second, "sync period duration")
+}
 
 func BindFlags(flags *pflag.FlagSet) {
 	flags.AddFlagSet(flag)
@@ -125,18 +128,16 @@ func (s *Backend) Setup() {
 		chErr chan error
 	)
 
-	flag.DurationVar(&syncPeriod, "sync-period-duration", 15*time.Second, "sync period duration")
+	// todo(knabben) - marshal Kubeconfiguration configuration file
+	winkernelConfig.EnableDSR = *enableDSR
+	winkernelConfig.NetworkName = "" // remove from config? proxier gets network name from KUBE_NETWORK env var
+	winkernelConfig.SourceVip = *sourceVip
 
 	// todo(knabben) - implement dualstack
 	//proxyMode := getProxyMode(string(config.Mode), WindowsKernelCompatTester{})
 	//dualStackMode := getDualStackMode(config.Winkernel.NetworkName, DualStackCompatTester{})
 	//_ = dualStackMode
 	//_ = proxyMode
-
-	// todo(knabben) - marshal Kubeconfiguration configuration file
-	winkernelConfig.EnableDSR = *enableDSR
-	winkernelConfig.NetworkName = "" // remove from config? proxier gets network name from KUBE_NETWORK env var
-	winkernelConfig.SourceVip = *sourceVip
 
 	nodeIP := detectNodeIP(*hostname, *bindAddress)
 	klog.InfoS("Detected node IP", "IP", nodeIP.String())
