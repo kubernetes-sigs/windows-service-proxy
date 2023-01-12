@@ -29,13 +29,14 @@ import (
 	"time"
 
 	"github.com/Microsoft/hcsshim/hcn"
+	healthcheck "sigs.k8s.io/windows-service-proxy/pkg/healthcheck"
 
 	v1 "k8s.io/api/core/v1"
 	apiutil "k8s.io/apimachinery/pkg/util/net"
 	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/client-go/tools/events"
-	"k8s.io/klog/v2"
+	klog "k8s.io/klog/v2"
 	"k8s.io/kubernetes/pkg/util/async"
 	netutils "k8s.io/utils/net"
 
@@ -107,8 +108,8 @@ type Proxier struct {
 	nodeIP         net.IP
 	recorder       events.EventRecorder
 
-	//serviceHealthServer healthcheck.ServiceHealthServer
-	//healthzServer       healthcheck.ProxierHealthUpdater
+	serviceHealthServer healthcheck.ServiceHealthServer
+	healthzServer       healthcheck.ProxierHealthUpdater
 
 	// Since converting probabilities (floats) to strings is expensive
 	// and we are using only probabilities in the format of 1/n, we are
@@ -277,7 +278,7 @@ func NewProxier(
 	hostname string,
 	nodeIP net.IP,
 	recorder events.EventRecorder, // todo(knabben) - fix it
-	//healthzServer healthcheck.ProxierHealthUpdater,
+	healthzServer healthcheck.ProxierHealthUpdater,
 	config KubeProxyWinkernelConfiguration,
 	healthzPort int,
 ) (*Proxier, error) {
@@ -294,8 +295,7 @@ func NewProxier(
 		klog.Warning("ClusterCIDR not specified, unable to distinguish between internal and external traffic")
 	}
 
-	// todo(jayunit100): fix svc>HealthServer
-	//serviceHealthServer := healthcheck.NewServiceHealthServer( hostname, recorder, []string{})
+	serviceHealthServer := healthcheck.NewServiceHealthServer(hostname, recorder, []string{})
 
 	// get a empty HNS network object, that we'll use to make system calls to either h1 or h2.
 	// this will introspect the underlying kernel.
@@ -390,17 +390,17 @@ func NewProxier(
 
 	isIPv6 := netutils.IsIPv6(nodeIP)
 	myProxier := &Proxier{
-		endPointsRefCount: make(endPointsReferenceCountMap),
-		serviceMap:        make(ServicesSnapshot),
-		endpointsMap:      make(EndpointsMap),
-		masqueradeAll:     masqueradeAll,
-		masqueradeMark:    masqueradeMark,
-		clusterCIDR:       clusterCIDR,
-		hostname:          hostname,
-		nodeIP:            nodeIP,
-		recorder:          recorder,
-		//serviceHealthServer:   serviceHealthServer,
-		//healthzServer:         healthzServer,
+		endPointsRefCount:     make(endPointsReferenceCountMap),
+		serviceMap:            make(ServicesSnapshot),
+		endpointsMap:          make(EndpointsMap),
+		masqueradeAll:         masqueradeAll,
+		masqueradeMark:        masqueradeMark,
+		clusterCIDR:           clusterCIDR,
+		hostname:              hostname,
+		nodeIP:                nodeIP,
+		recorder:              recorder,
+		serviceHealthServer:   serviceHealthServer,
+		healthzServer:         healthzServer,
 		hns:                   hns,
 		network:               *hnsNetworkInfo,
 		sourceVip:             sourceVip,
@@ -425,14 +425,15 @@ func NewProxier(
 	burstSyncs := 2
 	klog.V(3).InfoS("Record sync param", "minSyncPeriod", minSyncPeriod, "syncPeriod", syncPeriod, "burstSyncs", burstSyncs)
 	myProxier.syncRunner = async.NewBoundedFrequencyRunner("sync-runner", myProxier.syncProxyRules, minSyncPeriod, syncPeriod, burstSyncs)
+
 	return myProxier, nil
 }
 
 // Sync is called to synchronize the Proxier state to hns as soon as possible.
 func (proxier *Proxier) Sync() {
-	//	if Proxier.healthzServer != nil {
-	//		Proxier.healthzServer.QueuedUpdate()
-	//	}
+	if proxier.healthzServer != nil {
+		proxier.healthzServer.QueuedUpdate()
+	}
 
 	// TODO commenting out metrics, Jay to fix , figure out how to  copy these later, avoiding pkg/proxy imports
 	// metrics.SyncProxyRulesLastQueuedTimestamp.SetToCurrentTime()
@@ -444,9 +445,10 @@ func (proxier *Proxier) Sync() {
 // SyncLoop runs periodic work.  This is expected to run as a goroutine or as the main loop of the app.  It does not return.
 func (proxier *Proxier) SyncLoop() {
 	// Update healthz timestamp at beginning in case Sync() never succeeds.
-	//	if proxier.healthzServer != nil {
-	//		proxier.healthzServer.Updated()
-	//	}
+	if proxier.healthzServer != nil {
+		proxier.healthzServer.Updated()
+	}
+
 	// synthesize "last change queued" time as the informers are syncing.
 	//	metrics.SyncProxyRulesLastQueuedTimestamp.SetToCurrentTime()
 	proxier.syncRunner.Loop(wait.NeverStop)
@@ -917,12 +919,12 @@ func (proxier *Proxier) syncProxyRules() {
 	// Update service healthchecks.  The endpoints list might include services that are
 	// not "OnlyLocal", but the services list will not, and the serviceHealthServer
 	// will just drop those endpoints.
-	//	if err := proxier.serviceHealthServer.SyncServices(serviceUpdateResult.HCServiceNodePorts); err != nil {
-	//		klog.ErrorS(err, "Error syncing healthcheck services")
-	//	}
-	//	if err := proxier.serviceHealthServer.SyncEndpoints(endpointUpdateResult.HCEndpointsLocalIPSize); err != nil {
-	//		klog.ErrorS(err, "Error syncing healthcheck endpoints")
-	//	}
+	if err := proxier.serviceHealthServer.SyncServices(serviceUpdateResult.HCServiceNodePorts); err != nil {
+		klog.ErrorS(err, "Error syncing healthcheck services")
+	}
+	if err := proxier.serviceHealthServer.SyncEndpoints(endpointUpdateResult.HCEndpointsLocalIPSize); err != nil {
+		klog.ErrorS(err, "Error syncing healthcheck endpoints")
+	}
 
 	// Finish housekeeping.
 	// TODO: these could be made more consistent.
