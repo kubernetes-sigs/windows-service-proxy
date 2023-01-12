@@ -44,6 +44,7 @@ var (
 	_ decoder.Interface = &Backend{}
 	//proxier       Provider
 	//proxierState  Proxier
+
 	proxier       *Proxier
 	flag          = &pflag.FlagSet{}
 	minSyncPeriod time.Duration
@@ -53,45 +54,20 @@ var (
 	// healthzServer healthcheck.ProxierHealthUpdater
 	recorder events.EventRecorder
 
-	masqueradeAll = flag.Bool(
-		"masquerade-all",
-		false,
-		"Set this flag to set the masq rule for all traffic")
+	masqueradeAll = flag.Bool("masquerade-all", false, "Set this flag to set the masq rule for all traffic")
 
-	masqueradeBit = flag.Int(
-		"masquerade-bit",
-		14,
-		"iptablesMasqueradeBit is the bit of the iptables fwmark"+
-			" space to mark for SNAT Values must be within the range [0, 31]")
+	masqueradeBit = flag.Int("masquerade-bit", 14, "iptablesMasqueradeBit is the bit of the iptables fwmark"+" space to mark for SNAT Values must be within the range [0, 31]")
 
 	defaultHostname, _ = os.Hostname()
-	hostname           = flag.String(
-		"hostname",
-		defaultHostname,
-		"hostname")
+	hostname           = flag.String("hostname", defaultHostname, "hostname")
 
 	// defaulting to the sig-windows-dev-tools value...
-	clusterCIDR = flag.String(
-		"cluster-cidr",
-		"100.244.0.0/24",
-		"cluster IPs CIDR")
-
+	clusterCIDR = flag.String("cluster-cidr", "100.244.0.0/24", "cluster IPs CIDR")
 	// defaulting to the sig-windows-dev-tools value, should be 127.0.0.1?
-	nodeip = flag.String(
-		"nodeip",
-		"10.20.30.11",
-		"cluster IPs CIDR")
-
+	nodeip = flag.String("nodeip", "127.0.0.1", "cluster IPs CIDR")
 	// defaulting to the sig-windows-dev-tools value ...
-	sourceVip = flag.String(
-		"source-vip",
-		"100.244.206.65",
-		"Source VIP")
-
-	enableDSR = flag.Bool(
-		"enable-dsr",
-		false,
-		"Set this flag to enable DSR")
+	sourceVip = flag.String("source-vip", "100.244.206.65", "Source VIP")
+	enableDSR = flag.Bool("enable-dsr", false, "Set this flag to enable DSR")
 
 	winkernelConfig KubeProxyWinkernelConfiguration
 )
@@ -184,7 +160,8 @@ func (s *Backend) Setup() {
 		*hostname, // should this be nodeName?
 		netutils.ParseIPSloppy(*nodeip),
 		recorder,
-		winkernelConfig)
+		winkernelConfig,
+		8080)
 
 	if err != nil {
 		klog.ErrorS(err, "Failed to create an instance of NewProxier")

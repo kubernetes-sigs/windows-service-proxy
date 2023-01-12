@@ -80,6 +80,7 @@ type Provider interface {
 type Proxier struct {
 	// TODO(imroc): implement node handler for winkernel proxier.
 	//proxyconfig.NoopNodeHandler
+
 	// endpointsChanges and serviceChanges contains all changes to windowsEndpoint and
 	// services that happened since policies were synced. For a single object,
 	// changes are accumulated, i.e. previous is state from before all of them,
@@ -106,6 +107,9 @@ type Proxier struct {
 	nodeIP         net.IP
 	recorder       events.EventRecorder
 
+	//serviceHealthServer healthcheck.ServiceHealthServer
+	//healthzServer       healthcheck.ProxierHealthUpdater
+
 	// Since converting probabilities (floats) to strings is expensive
 	// and we are using only probabilities in the format of 1/n, we are
 	// precomputing some number of those and cache for future reuse.
@@ -117,6 +121,10 @@ type Proxier struct {
 	hostMac           string
 	isDSR             bool
 	supportedFeatures hcn.SupportedFeatures
+	healthzPort       int
+
+	forwardHealthCheckVip bool
+	rootHnsEndpointName   string
 }
 
 // BaseEndpointInfo contains base information that defines an endpoint.
@@ -261,34 +269,33 @@ func getNetworkInfo(hns HCNUtils, hnsNetworkName string) (*hnsNetworkInfo, error
 
 // NewProxier returns a new Proxier
 func NewProxier(
-	syncPeriod time.Duration,    //
-	minSyncPeriod time.Duration, //
+	syncPeriod time.Duration,
+	minSyncPeriod time.Duration,
 	masqueradeAll bool,
 	masqueradeBit int,
 	clusterCIDR string,
 	hostname string,
 	nodeIP net.IP,
-	recorder events.EventRecorder, // ignore
+	recorder events.EventRecorder, // todo(knabben) - fix it
+	//healthzServer healthcheck.ProxierHealthUpdater,
 	config KubeProxyWinkernelConfiguration,
+	healthzPort int,
 ) (*Proxier, error) {
-
-	// ** Why do we have a masquerade bit ? and what is this 1 << uint... doing
+	// todo(jayunit100): document - Why do we have a masquerade bit ? and what is this 1 << uint... doing
 	masqueradeValue := 1 << uint(masqueradeBit)
 	masqueradeMark := fmt.Sprintf("%#08x/%#08x", masqueradeValue, masqueradeValue)
 
 	if nodeIP == nil {
-		klog.Warning("Invalid nodeIP, initializing kube-proxy with 10.20.30.11 as nodeIP")
-		nodeIP = netutils.ParseIPSloppy("10.20.30.11")
+		klog.Warning("Invalid nodeIP, initializing kube-proxy with 127.0.0.1 as nodeIP")
+		nodeIP = netutils.ParseIPSloppy("127.0.0.1")
 	}
 
 	if len(clusterCIDR) == 0 {
 		klog.Warning("ClusterCIDR not specified, unable to distinguish between internal and external traffic")
 	}
 
-	// ** not worrying about svc>HealthServer but do we need it later?
-	//serviceHealthServer := healthcheck.NewServiceHealthServer(
-	//	hostname,
-	//	recorder, []string{}) /* windows listen to all node addresses */
+	// todo(jayunit100): fix svc>HealthServer
+	//serviceHealthServer := healthcheck.NewServiceHealthServer( hostname, recorder, []string{})
 
 	// get a empty HNS network object, that we'll use to make system calls to either h1 or h2.
 	// this will introspect the underlying kernel.
@@ -330,23 +337,23 @@ func NewProxier(
 	}
 
 	klog.V(1).InfoS("Hns Network loaded", "hnsNetworkInfo", hnsNetworkInfo)
-
 	isDSR := config.EnableDSR
+	// todo(knabben) - review feature gates
+	/*if isDSR && !utilfeature.DefaultFeatureGate.Enabled(kubefeatures.WinDSR) {
+		return nil, fmt.Errorf("WinDSR feature gate not enabled")
+	}*/
 	err = hcn.DSRSupported()
 	if isDSR && err != nil {
 		return nil, err
 	}
 
-	klog.InfoS("Enable DSR?", "isDSR", winkernelConfig.EnableDSR)
-
-	// Why do we need VIPs?
-
-	//var sourceVip string
+	var sourceVip string
 	var hostMac string
 	if isOverlay(hnsNetworkInfo) {
-		if !true /*utilfeature.DefaultFeatureGate.Enabled(kubefeatures.WinOverlay)*/ {
+		// todo(knabben) - fix feature gates
+		/*if !true /*utilfeature.DefaultFeatureGate.Enabled(kubefeatures.WinOverlay) {
 			return nil, fmt.Errorf("WinOverlay feature gate not enabled")
-		}
+		}*/
 		err = hcn.RemoteSubnetSupported()
 		if err != nil {
 			return nil, err
@@ -376,10 +383,9 @@ func NewProxier(
 				}
 			}
 		}
-		// TODO: Add Back the flag
-		//if len(hostMac) == 0 {
-		//	return nil, fmt.Errorf("could not find host mac address for %s", nodeIP)
-		//}
+		if len(hostMac) == 0 {
+			return nil, fmt.Errorf("could not find host mac address for %s", nodeIP)
+		}
 	}
 
 	isIPv6 := netutils.IsIPv6(nodeIP)
@@ -393,31 +399,24 @@ func NewProxier(
 		hostname:          hostname,
 		nodeIP:            nodeIP,
 		recorder:          recorder,
-		hns:               hns,
-		network:           *hnsNetworkInfo,
-		sourceVip:         *sourceVip,
-		hostMac:           hostMac,
-		isDSR:             isDSR,
-		supportedFeatures: supportedFeatures,
-		isIPv6Mode:        isIPv6,
+		//serviceHealthServer:   serviceHealthServer,
+		//healthzServer:         healthzServer,
+		hns:                   hns,
+		network:               *hnsNetworkInfo,
+		sourceVip:             sourceVip,
+		hostMac:               hostMac,
+		isDSR:                 isDSR,
+		supportedFeatures:     supportedFeatures,
+		isIPv6Mode:            isIPv6,
+		healthzPort:           healthzPort,
+		rootHnsEndpointName:   config.RootHnsEndpointName,
+		forwardHealthCheckVip: config.ForwardHealthCheckVip,
 	}
 
 	ipFamily := v1.IPv4Protocol
 	if isIPv6 {
 		ipFamily = v1.IPv6Protocol
 	}
-
-	/**
-	func(*kpng.PortMapping, *kpng.Service, *BaseServiceInfo)
-		(port *v1.ServicePort,    service *v1.Service, baseInfo *BaseServiceInfo)
-	- (string,
-		func(baseInfo *proxy.BaseEndpointInfo)
-			proxy.Endpoint,
-			"k8s.io/api/core/v1".IPFamily,
-	    	events.EventRecorder
-		)
-	- vnet1 portmapping, vnet1 service, BaseServiceInfo
-	*/
 	serviceChanges := NewServiceChangeTracker(myProxier.newServiceInfo, ipFamily, recorder)
 	endPointChangeTracker := NewEndpointChangeTracker(hostname, ipFamily, recorder)
 	myProxier.endpointsChanges = endPointChangeTracker
