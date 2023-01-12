@@ -1,0 +1,21 @@
+# yaml-language-server: $schema=https://json.schemastore.org/github-workflow.json
+name: ci-image-build
+
+on:
+  pull_request:
+    types: [opened, edited, synchronize, reopened]
+  workflow_dispatch: 
+
+permissions: {}
+
+jobs:
+  ci-image-build:
+    name: ci-image-build
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v2
+      - name: make image
+        env:
+          REGISTRY: "ci"
+        run: |
+          make image
