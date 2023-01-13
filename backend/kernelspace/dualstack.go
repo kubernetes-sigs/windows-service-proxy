@@ -20,8 +20,8 @@ limitations under the License.
 package kernelspace
 
 import (
-	"strings"
 	"k8s.io/klog/v2"
+	"strings"
 
 	"github.com/Microsoft/hcsshim/hcn"
 )
@@ -90,7 +90,7 @@ func (t DualStackCompatTester) DualStackCompatible(networkName string) bool {
 		return false
 	}
 
-	if true /* utilfeature.DefaultFeatureGate.Enabled(kubefeatures.WinOverlay) */ && isOverlay(networkInfo) {
+	if isOverlay(networkInfo) {
 		// Overlay (VXLAN) networks on Windows do not support dual-stack networking today
 		klog.InfoS("Winoverlay does not support dual-stack, falling back to single-stack")
 		return false
