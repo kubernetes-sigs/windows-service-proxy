@@ -29,6 +29,7 @@ import (
 	"time"
 
 	"github.com/Microsoft/hcsshim/hcn"
+	"k8s.io/kubernetes/pkg/proxy/metrics"
 	healthcheck "sigs.k8s.io/windows-service-proxy/pkg/healthcheck"
 
 	v1 "k8s.io/api/core/v1"
@@ -41,6 +42,7 @@ import (
 	netutils "k8s.io/utils/net"
 
 	"sigs.k8s.io/kpng/api/localv1"
+	utilproxy "sigs.k8s.io/windows-service-proxy/pkg/util"
 )
 
 // Provider is a proxy interface enforcing services and windowsEndpoint methods
@@ -114,7 +116,7 @@ type Proxier struct {
 	// Since converting probabilities (floats) to strings is expensive
 	// and we are using only probabilities in the format of 1/n, we are
 	// precomputing some number of those and cache for future reuse.
-	precomputedProbabilities []string
+	//precomputedProbabilities []string
 
 	hns               HCNUtils
 	network           hnsNetworkInfo
@@ -138,7 +140,7 @@ type BaseEndpointInfo struct {
 	IsLocal bool
 	// ZoneHints represent the zone hints for the endpoint. This is based on
 	// endpoint.hints.forZones[*].name in the EndpointSlice API.
-	ZoneHints sets.String
+	ZoneHints sets.String // nolint
 	// Ready indicates whether this endpoint is ready and NOT terminating.
 	// For pods, this is true if a pod has a ready status and a nil deletion timestamp.
 	// This is only set when watching EndpointSlices. If using Endpoints, this is always
@@ -195,18 +197,18 @@ func (info *BaseEndpointInfo) IsTerminating() bool {
 }
 
 // GetZoneHints returns the zone hint for the endpoint.
-func (info *BaseEndpointInfo) GetZoneHints() sets.String {
+func (info *BaseEndpointInfo) GetZoneHints() sets.String { // nolint
 	return info.ZoneHints
 }
 
 // IP returns just the IP part of the endpoint, it's a part of proxy.Endpoint interface.
 func (info *BaseEndpointInfo) IP() string {
-	return IPPart(info.Endpoint)
+	return utilproxy.IPPart(info.Endpoint)
 }
 
 // Port returns just the Port part of the endpoint.
 func (info *BaseEndpointInfo) Port() (int, error) {
-	return PortPart(info.Endpoint)
+	return utilproxy.PortPart(info.Endpoint)
 }
 
 // Equal is part of proxy.Endpoint interface.
@@ -239,7 +241,7 @@ func (refCountMap endPointsReferenceCountMap) getRefCount(hnsID string) *uint16 
 
 func newHostNetworkService() (HCNUtils, hcn.SupportedFeatures) {
 	var h HCNUtils
-	supportedFeatures := hcn.GetSupportedFeatures()
+	supportedFeatures := hcn.GetSupportedFeatures() // nolint
 	if supportedFeatures.Api.V2 {
 		h = hcnutils{&ihcn{}}
 	}
@@ -430,8 +432,7 @@ func (proxier *Proxier) Sync() {
 		proxier.healthzServer.QueuedUpdate()
 	}
 
-	// TODO commenting out metrics, Jay to fix , figure out how to  copy these later, avoiding pkg/proxy imports
-	// metrics.SyncProxyRulesLastQueuedTimestamp.SetToCurrentTime()
+	metrics.SyncProxyRulesLastQueuedTimestamp.SetToCurrentTime()
 
 	klog.V(0).InfoS("proxier_sync.Sync ->")
 	proxier.syncRunner.Run()
@@ -445,7 +446,7 @@ func (proxier *Proxier) SyncLoop() {
 	}
 
 	// synthesize "last change queued" time as the informers are syncing.
-	//	metrics.SyncProxyRulesLastQueuedTimestamp.SetToCurrentTime()
+	metrics.SyncProxyRulesLastQueuedTimestamp.SetToCurrentTime()
 	proxier.syncRunner.Loop(wait.NeverStop)
 }
 
@@ -704,7 +705,7 @@ func (proxier *Proxier) syncProxyRules() {
 							hnsEndpoint := &endpointsInfo{
 								ip:              ep.ip,
 								isLocal:         false,
-								macAddress:      conjureMac("02-11", netutils.ParseIPSloppy(ep.ip)),
+								macAddress:      utilproxy.ConjureMac("02-11", netutils.ParseIPSloppy(ep.ip)),
 								providerAddress: providerAddress,
 							}
 
@@ -797,7 +798,7 @@ func (proxier *Proxier) syncProxyRules() {
 				loadBalancerFlags{isDSR: proxier.isDSR, isIPv6: proxier.isIPv6Mode, sessionAffinity: sessionAffinityClientIP},
 				sourceVip,
 				svcInfo.ClusterIP().String(),
-				Enum(svcInfo.Protocol()),
+				utilproxy.Enum(svcInfo.Protocol()),
 				uint16(svcInfo.targetPort),
 				uint16(svcInfo.Port()),
 				queriedLoadBalancers,
@@ -825,7 +826,7 @@ func (proxier *Proxier) syncProxyRules() {
 						loadBalancerFlags{isDSR: svcInfo.localTrafficDSR, localRoutedVIP: true, sessionAffinity: sessionAffinityClientIP, isIPv6: proxier.isIPv6Mode},
 						sourceVip,
 						"",
-						Enum(svcInfo.Protocol()),
+						utilproxy.Enum(svcInfo.Protocol()),
 						uint16(svcInfo.targetPort),
 						uint16(svcInfo.NodePort()),
 						queriedLoadBalancers,
@@ -856,8 +857,8 @@ func (proxier *Proxier) syncProxyRules() {
 						externalIPEndpoints,
 						loadBalancerFlags{isDSR: svcInfo.localTrafficDSR, sessionAffinity: sessionAffinityClientIP, isIPv6: proxier.isIPv6Mode},
 						sourceVip,
-						externalIP.ip,
-						Enum(svcInfo.Protocol()),
+						externalIP.IP,
+						utilproxy.Enum(svcInfo.Protocol()),
 						uint16(svcInfo.targetPort),
 						uint16(svcInfo.Port()),
 						queriedLoadBalancers,
@@ -866,7 +867,7 @@ func (proxier *Proxier) syncProxyRules() {
 						klog.ErrorS(err, "Policy creation failed")
 						continue
 					}
-					externalIP.hnsID = hnsLoadBalancer.hnsID
+					externalIP.HnsID = hnsLoadBalancer.hnsID
 					klog.V(3).InfoS("Hns LoadBalancer resource created for externalIP resources", "externalIP", externalIP, "hnsID", hnsLoadBalancer.hnsID)
 				} else {
 					klog.V(3).InfoS("Skipped creating Hns LoadBalancer for externalIP resources", "externalIP", externalIP, "hnsID", hnsLoadBalancer.hnsID)
@@ -885,8 +886,8 @@ func (proxier *Proxier) syncProxyRules() {
 						lbIngressEndpoints,
 						loadBalancerFlags{isDSR: svcInfo.preserveDIP || svcInfo.localTrafficDSR, useMUX: svcInfo.preserveDIP, preserveDIP: svcInfo.preserveDIP, sessionAffinity: sessionAffinityClientIP, isIPv6: proxier.isIPv6Mode},
 						sourceVip,
-						lbIngressIP.ip,
-						Enum(svcInfo.Protocol()),
+						lbIngressIP.IP,
+						utilproxy.Enum(svcInfo.Protocol()),
 						uint16(svcInfo.targetPort),
 						uint16(svcInfo.Port()),
 						queriedLoadBalancers,
@@ -895,12 +896,12 @@ func (proxier *Proxier) syncProxyRules() {
 						klog.ErrorS(err, "Policy creation failed")
 						continue
 					}
-					lbIngressIP.hnsID = hnsLoadBalancer.hnsID
+					lbIngressIP.HnsID = hnsLoadBalancer.hnsID
 					klog.V(3).InfoS("Hns LoadBalancer resource created for loadBalancer Ingress resources", "lbIngressIP", lbIngressIP)
 				} else {
 					klog.V(3).InfoS("Skipped creating Hns LoadBalancer for loadBalancer Ingress resources", "lbIngressIP", lbIngressIP)
 				}
-				lbIngressIP.hnsID = hnsLoadBalancer.hnsID
+				lbIngressIP.HnsID = hnsLoadBalancer.hnsID
 				klog.V(3).InfoS("Hns LoadBalancer resource created for loadBalancer Ingress resources", "lbIngressIP", lbIngressIP)
 
 			}

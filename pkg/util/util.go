@@ -1,8 +1,5 @@
-//go:build windows
-// +build windows
-
 /*
-Copyright 2018-2022 The Kubernetes Authors.
+Copyright 2023 The Kubernetes Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -17,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package kernelspace
+package util
 
 import (
 	"bytes"
@@ -37,14 +34,14 @@ import (
 	localv1 "sigs.k8s.io/kpng/api/localv1"
 )
 
-type externalIPInfo struct {
-	ip    string
-	hnsID string
+type ExternalIPInfo struct {
+	IP    string
+	HnsID string
 }
 
-type loadBalancerIngressInfo struct {
-	ip    string
-	hnsID string
+type LoadBalancerIngressInfo struct {
+	IP    string
+	HnsID string
 }
 
 func Enum(p v1.Protocol) uint16 {
@@ -60,15 +57,11 @@ func Enum(p v1.Protocol) uint16 {
 	return 0
 }
 
-type closeable interface {
-	Close() error
-}
-
 // Uses mac prefix and IPv4 address to return a mac address
 // This ensures mac addresses are unique for proper load balancing
 // There is a possibility of MAC collisions but this Mac address is used for remote windowsEndpoint only
 // and not sent on the wire.
-func conjureMac(macPrefix string, ip net.IP) string {
+func ConjureMac(macPrefix string, ip net.IP) string {
 	if ip4 := ip.To4(); ip4 != nil {
 		a, b, c, d := ip4[0], ip4[1], ip4[2], ip4[3]
 		return fmt.Sprintf("%v-%02x-%02x-%02x-%02x", macPrefix, a, b, c, d)
@@ -163,14 +156,6 @@ var (
 	// ErrNoAddresses indicates there are no addresses for the hostname
 	ErrNoAddresses = errors.New("No addresses for hostname")
 )
-
-// NetworkInterfacer defines an interface for several net library functions. Production
-// code will forward to net library functions, and unit tests will override the methods
-// for testing purposes.
-type NetworkInterfacer interface {
-	Addrs(intf *net.Interface) ([]net.Addr, error)
-	Interfaces() ([]net.Interface, error)
-}
 
 // IsZeroCIDR checks whether the input CIDR string is either
 // the IPv4 or IPv6 zero CIDR
@@ -283,7 +268,7 @@ func LogAndEmitIncorrectIPVersionEvent(recorder events.EventRecorder, fieldName,
 // If multiple cidrs is given, it will return the minimal IP sets, e.g. given input `[1.2.0.0/16, 0.0.0.0/0]`, it will
 // only return `0.0.0.0/0`.
 // NOTE: GetNodeAddresses only accepts CIDRs, if you want concrete IPs, e.g. 1.2.3.4, then the input should be 1.2.3.4/32.
-func GetNodeAddresses(cidrs []string, nw NetworkInterfacer) (sets.String, error) {
+func GetNodeAddresses(cidrs []string, nw NetworkInterfacer) (sets.String, error) { // nolint
 	uniqueAddressList := sets.NewString()
 	if len(cidrs) == 0 {
 		uniqueAddressList.Insert(IPv4ZeroCIDR)
@@ -297,9 +282,9 @@ func GetNodeAddresses(cidrs []string, nw NetworkInterfacer) (sets.String, error)
 		}
 	}
 
-	itfs, err := nw.Interfaces()
+	addrs, err := nw.InterfaceAddrs()
 	if err != nil {
-		return nil, fmt.Errorf("error listing all interfaces from host, error: %v", err)
+		return nil, fmt.Errorf("error listing all interfaceAddrs from host, error: %v", err)
 	}
 
 	// Second round of iteration to parse IPs based on cidr.
@@ -308,30 +293,25 @@ func GetNodeAddresses(cidrs []string, nw NetworkInterfacer) (sets.String, error)
 			continue
 		}
 
-		_, ipNet, _ := net.ParseCIDR(cidr)
-		for _, itf := range itfs {
-			addrs, err := nw.Addrs(&itf)
-			if err != nil {
-				return nil, fmt.Errorf("error getting address from interface %s, error: %v", itf.Name, err)
+		_, ipNet, _ := netutils.ParseCIDRSloppy(cidr)
+		for _, addr := range addrs {
+			var ip net.IP
+			// nw.InterfaceAddrs may return net.IPAddr or net.IPNet on windows, and it will return net.IPNet on linux.
+			switch v := addr.(type) {
+			case *net.IPAddr:
+				ip = v.IP
+			case *net.IPNet:
+				ip = v.IP
+			default:
+				continue
 			}
 
-			for _, addr := range addrs {
-				if addr == nil {
-					continue
+			if ipNet.Contains(ip) {
+				if netutils.IsIPv6(ip) && !uniqueAddressList.Has(IPv6ZeroCIDR) {
+					uniqueAddressList.Insert(ip.String())
 				}
-
-				ip, _, err := net.ParseCIDR(addr.String())
-				if err != nil {
-					return nil, fmt.Errorf("error parsing CIDR for interface %s, error: %v", itf.Name, err)
-				}
-
-				if ipNet.Contains(ip) {
-					if netutils.IsIPv6(ip) && !uniqueAddressList.Has(IPv6ZeroCIDR) {
-						uniqueAddressList.Insert(ip.String())
-					}
-					if !netutils.IsIPv6(ip) && !uniqueAddressList.Has(IPv4ZeroCIDR) {
-						uniqueAddressList.Insert(ip.String())
-					}
+				if !netutils.IsIPv6(ip) && !uniqueAddressList.Has(IPv4ZeroCIDR) {
+					uniqueAddressList.Insert(ip.String())
 				}
 			}
 		}
@@ -379,18 +359,6 @@ func MapIPsByIPFamily(ips *localv1.IPSet) map[v1.IPFamily][]string {
 	ipFamilyMap[v1.IPv4Protocol] = append(ipFamilyMap[v1.IPv4Protocol], ips.V4...)
 	ipFamilyMap[v1.IPv6Protocol] = append(ipFamilyMap[v1.IPv6Protocol], ips.V6...)
 	return ipFamilyMap
-}
-
-func getIPFamilyFromIP(ipStr string) (v1.IPFamily, error) {
-	netIP := net.ParseIP(ipStr)
-	if netIP == nil {
-		return "", ErrAddressNotAllowed
-	}
-
-	if netutils.IsIPv6(netIP) {
-		return v1.IPv6Protocol, nil
-	}
-	return v1.IPv4Protocol, nil
 }
 
 // OtherIPFamily returns the other ip family

@@ -25,15 +25,14 @@ import (
 
 	"github.com/lithammer/dedent"
 	v1 "k8s.io/api/core/v1"
-	"k8s.io/klog/v2"
-
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/tools/events"
+	klog "k8s.io/klog/v2"
 	api "k8s.io/kubernetes/pkg/apis/core"
 
 	utilerrors "k8s.io/apimachinery/pkg/util/errors"
 	"k8s.io/apimachinery/pkg/util/sets"
-	utilproxy "k8s.io/kubernetes/pkg/proxy/util"
+	utilproxy "sigs.k8s.io/windows-service-proxy/pkg/util"
 )
 
 // ServiceHealthServer serves HTTP endpoints for each service name, with results

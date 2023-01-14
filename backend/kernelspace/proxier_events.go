@@ -20,13 +20,14 @@ limitations under the License.
 package kernelspace
 
 import (
-	"sync/atomic"
-
 	discovery "k8s.io/api/discovery/v1"
 	netutils "k8s.io/utils/net"
+	"sync/atomic"
 
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/kpng/api/localv1"
+
+	utilproxy "sigs.k8s.io/windows-service-proxy/pkg/util"
 )
 
 // OnEndpointsAdd is called whenever creation of new windowsEndpoint object
@@ -144,8 +145,7 @@ func (proxier *Proxier) OnServiceSynced() {
 	proxier.syncProxyRules()
 }
 
-func (proxier *Proxier) newEndpointInfo(baseInfo *BaseEndpointInfo, _ *ServicePortName) *endpointsInfo {
-
+func (proxier *Proxier) newEndpointInfo(baseInfo *BaseEndpointInfo, _ *ServicePortName) *endpointsInfo { // nolint
 	portNumber, err := baseInfo.Port()
 
 	if err != nil {
@@ -156,7 +156,7 @@ func (proxier *Proxier) newEndpointInfo(baseInfo *BaseEndpointInfo, _ *ServicePo
 		ip:         baseInfo.IP(),
 		port:       uint16(portNumber),
 		isLocal:    baseInfo.GetIsLocal(),
-		macAddress: conjureMac("02-11", netutils.ParseIPSloppy(baseInfo.IP())),
+		macAddress: utilproxy.ConjureMac("02-11", netutils.ParseIPSloppy(baseInfo.IP())),
 		refCount:   new(uint16),
 		hnsID:      "",
 		hns:        proxier.hns,
@@ -192,10 +192,10 @@ func (proxier *Proxier) newServiceInfo(port *localv1.PortMapping, service *local
 	info.localTrafficDSR = localTrafficDSR
 
 	for _, eip := range service.IPs.ExternalIPs.V4 {
-		info.externalIPs = append(info.externalIPs, &externalIPInfo{ip: eip})
+		info.externalIPs = append(info.externalIPs, &utilproxy.ExternalIPInfo{IP: eip})
 	}
 	for _, eip := range service.IPs.ExternalIPs.V6 {
-		info.externalIPs = append(info.externalIPs, &externalIPInfo{ip: eip})
+		info.externalIPs = append(info.externalIPs, &utilproxy.ExternalIPInfo{IP: eip})
 	}
 
 	//for _, ingress := range service.Status.LoadBalancer.Ingress {

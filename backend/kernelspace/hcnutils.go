@@ -24,10 +24,10 @@ import (
 	"fmt"
 	"strings"
 
+	klog "k8s.io/klog/v2"
+
 	"github.com/Microsoft/hcsshim"
 	"github.com/Microsoft/hcsshim/hcn"
-	"k8s.io/klog/v2"
-
 	netutils "k8s.io/utils/net"
 )
 
@@ -398,7 +398,7 @@ func deleteAllHnsLoadBalancerPolicy() {
 
 }
 
-func getHnsNetworkInfo(hnsNetworkName string) (*hnsNetworkInfo, error) {
+func getHnsNetworkInfo(hnsNetworkName string) (*hnsNetworkInfo, error) { // nolint
 	hnsnetwork, err := hcsshim.GetHNSNetworkByName(hnsNetworkName)
 	if err != nil {
 		klog.ErrorS(err, "Failed to get HNS Network by name")

@@ -24,14 +24,14 @@ import (
 	"strconv"
 	"time"
 
+	klog "k8s.io/klog/v2"
+
 	v1 "k8s.io/api/core/v1"
 	discovery "k8s.io/api/discovery/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/client-go/tools/events"
 	"k8s.io/component-base/metrics"
-	"k8s.io/klog/v2"
-
 	localv1 "sigs.k8s.io/kpng/api/localv1"
 )
 
@@ -79,8 +79,8 @@ func (info *endpointsInfo) IsTerminating() bool {
 }
 
 // GetZoneHint returns the zone hint for the endpoint.
-func (info *endpointsInfo) GetZoneHints() sets.String {
-	return sets.String{}
+func (info *endpointsInfo) GetZoneHints() sets.String { // nolint
+	return sets.String{} // nolint
 }
 
 // IP returns just the IP part of the endpoint, it's a part of proxy.Endpoint interface.
@@ -134,7 +134,7 @@ func (info *endpointsInfo) Cleanup() {
 	}
 }
 
-var supportedEndpointSliceAddressTypes = sets.NewString(
+var supportedEndpointSliceAddressTypes = sets.NewString( // nolint
 	string(discovery.AddressTypeIPv4),
 	string(discovery.AddressTypeIPv6),
 )
@@ -222,7 +222,7 @@ func (ect *EndpointChangeTracker) checkoutTriggerTimes(lastChangeTriggerTimes *m
 // EndpointsLastChangeTriggerTime annotation stored in the given windowsEndpoint
 // object or the "zero" time if the annotation wasn't set or was set
 // incorrectly.
-func getLastChangeTriggerTime(annotations map[string]string) time.Time {
+func getLastChangeTriggerTime(annotations map[string]string) time.Time { // nolint
 	// TODO(#81360): ignore case when Endpoint is deleted.
 	if _, ok := annotations[v1.EndpointsLastChangeTriggerTime]; !ok {
 		// It's possible that the Endpoints object won't have the
@@ -317,8 +317,8 @@ func (em EndpointsMap) merge(other EndpointsMap) {
 }
 
 // GetLocalEndpointIPs returns windowsEndpoint IPs if given endpoint is local - local means the endpoint is running in same host as kube-proxy.
-func (em EndpointsMap) getLocalReadyEndpointIPs() map[types.NamespacedName]sets.String {
-	localIPs := make(map[types.NamespacedName]sets.String)
+func (em EndpointsMap) getLocalReadyEndpointIPs() map[types.NamespacedName]sets.String { //nolint
+	localIPs := make(map[types.NamespacedName]sets.String) // nolint
 	for service, endpoints := range em {
 		for _, endpointEntry := range *endpoints {
 			// Only add ready windowsEndpoint for health checking. Terminating windowsEndpoint may still serve traffic
@@ -388,6 +388,6 @@ func (cache *EndpointsCache) updatePending(svcKey types.NamespacedName, key stri
 	return true
 }
 
-func (cache *EndpointsCache) isLocal(hostname string) bool {
+func (cache *EndpointsCache) isLocal(hostname string) bool { // nolint
 	return len(cache.hostname) > 0 && hostname == cache.hostname
 }

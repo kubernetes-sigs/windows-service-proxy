@@ -20,10 +20,11 @@ limitations under the License.
 package kernelspace
 
 import (
-	"k8s.io/klog/v2"
+	klog "k8s.io/klog/v2"
 	"strings"
 
 	"github.com/Microsoft/hcsshim/hcn"
+	utilproxy "sigs.k8s.io/windows-service-proxy/pkg/util"
 )
 
 func isOverlay(hnsNetworkInfo *hnsNetworkInfo) bool {
@@ -37,20 +38,20 @@ type StackCompatTester interface {
 
 type DualStackCompatTester struct{}
 
-func getDualStackMode(networkname string, compatTester StackCompatTester) bool {
+func getDualStackMode(networkname string, compatTester StackCompatTester) bool { // nolint
 	return compatTester.DualStackCompatible(networkname)
 }
 
-func getProxyMode(string, kcompat KernelCompatTester) string {
+func getProxyMode(string, kcompat utilproxy.KernelCompatTester) string { // nolint
 	return tryWinKernelSpaceProxy(kcompat)
 }
 
-func tryWinKernelSpaceProxy(kcompat KernelCompatTester) string {
+func tryWinKernelSpaceProxy(kcompat utilproxy.KernelCompatTester) string { // nolint
 	// Check for Windows Kernel Version if we can support Kernel Space proxy
 	// Check for Windows Version
 
 	// guaranteed false on error, error only necessary for debugging
-	useWinKernelProxy, err := CanUseWinKernelProxier(kcompat)
+	useWinKernelProxy, err := utilproxy.CanUseWinKernelProxier(kcompat)
 	if err != nil {
 		klog.ErrorS(err, "Can't determine whether to use windows kernel proxy, using userspace proxier")
 		return "userspace"

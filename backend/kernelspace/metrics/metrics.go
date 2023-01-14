@@ -14,29 +14,25 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package kernelspace
+package metrics
 
 import (
+	"github.com/prometheus/client_golang/prometheus"
+	"k8s.io/kubernetes/pkg/proxy/metrics"
 	"sync"
-	// "k8s.io/component-base/metrics/legacyregistry"
-	//	"k8s.io/kubernetes/pkg/proxy/metrics"
 )
 
 var registerMetricsOnce sync.Once // nolint
 
 // RegisterMetrics registers kube-proxy metrics for Windows modes.
 func RegisterMetrics() {
-	// todo(jayunit100): add metrics for kernelspace backend
-
-	/**	registerMetricsOnce.Do(func() {
-		legacyregistry.MustRegister(metrics.SyncProxyRulesLatency)
-		legacyregistry.MustRegister(metrics.SyncProxyRulesLastTimestamp)
-		legacyregistry.MustRegister(metrics.EndpointChangesPending)
-		legacyregistry.MustRegister(metrics.EndpointChangesTotal)
-		legacyregistry.MustRegister(metrics.ServiceChangesPending)
-		legacyregistry.MustRegister(metrics.ServiceChangesTotal)
-		legacyregistry.MustRegister(metrics.SyncProxyRulesLastQueuedTimestamp)
+	registerMetricsOnce.Do(func() {
+		prometheus.MustRegister(metrics.SyncProxyRulesLastQueuedTimestamp)
+		prometheus.MustRegister(metrics.SyncProxyRulesLatency)
+		prometheus.MustRegister(metrics.SyncProxyRulesLastTimestamp)
+		prometheus.MustRegister(metrics.EndpointChangesPending)
+		prometheus.MustRegister(metrics.EndpointChangesTotal)
+		prometheus.MustRegister(metrics.ServiceChangesPending)
+		prometheus.MustRegister(metrics.ServiceChangesTotal)
 	})
-	*/
-
 }

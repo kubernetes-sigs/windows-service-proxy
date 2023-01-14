@@ -24,17 +24,17 @@ import (
 
 	"k8s.io/klog/v2"
 
-	"github.com/prometheus/client_golang/prometheus"
 	"github.com/spf13/cobra"
-	"sigs.k8s.io/kpng/server/pkg/metrics"
-
 	"sigs.k8s.io/kpng/server/pkg/proxy"
 )
 
 var (
-	cpuprofile    = flag.String("cpuprofile", "", "write cpu profile to file")
-	exportMetrics = flag.String("exportMetrics", "", "start metrics server on the specified IP:PORT")
+	cpuprofile string
 )
+
+func init() {
+	flag.StringVar(&cpuprofile, "cpuprofile", "", "write cpu profile to file")
+}
 
 // main starts the kpng program by running the command sent by the user.  This is the entry point to kpng!
 func main() {
@@ -58,13 +58,6 @@ func main() {
 func setupGlobal() (ctx context.Context) {
 	ctx, cancel := context.WithCancel(context.Background())
 
-	if len(*exportMetrics) != 0 {
-		prometheus.MustRegister(metrics.Kpng_k8s_api_events)
-		prometheus.MustRegister(metrics.Kpng_node_local_events)
-		klog.Infof("exporting metrics to: %v ", *exportMetrics)
-		metrics.StartMetricsServer(*exportMetrics, ctx.Done())
-	}
-
 	// handle exit signals
 	go func() {
 		proxy.WaitForTermSignal()
@@ -75,8 +68,8 @@ func setupGlobal() (ctx context.Context) {
 		os.Exit(1)
 	}()
 
-	if *cpuprofile != "" {
-		f, err := os.Create(*cpuprofile)
+	if cpuprofile != "" {
+		f, err := os.Create(cpuprofile)
 		if err != nil {
 			klog.Fatal(err)
 		}
