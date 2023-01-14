@@ -291,6 +291,16 @@ func (hns hcnutils) getAllLoadBalancers() (map[loadBalancerIdentifier]*loadBalan
 }
 
 func (hns hcnutils) getLoadBalancer(endpoints []endpointsInfo, flags loadBalancerFlags, sourceVip string, vip string, protocol uint16, internalPort uint16, externalPort uint16, previousLoadBalancers map[loadBalancerIdentifier]*loadBalancerInfo) (*loadBalancerInfo, error) {
+	klog.V(5).InfoS("GetLoadBalancer args",
+		"endpoints", endpoints,
+		"flags", flags,
+		"sourceVip", sourceVip,
+		"vip", vip,
+		"protocol", protocol,
+		"internalPort", internalPort,
+		"externalPort", externalPort,
+		"previousLoadBalancers", previousLoadBalancers)
+
 	var id loadBalancerIdentifier
 	vips := []string{}
 	if len(vip) > 0 {
