@@ -25,14 +25,18 @@ import (
 	"strings"
 	"sync"
 
+	klog "k8s.io/klog/v2"
+
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/client-go/tools/events"
-	"k8s.io/klog/v2"
 	localv1 "sigs.k8s.io/kpng/api/localv1"
+
+	utilproxy "sigs.k8s.io/windows-service-proxy/pkg/util"
 )
 
+/*
 // returns a new ServicePort which abstracts a serviceInfo
 func newServiceInfo(port *localv1.PortMapping, service *localv1.Service, baseInfo *BaseServiceInfo) ServicePort {
 	info := &serviceInfo{BaseServiceInfo: baseInfo}
@@ -53,14 +57,15 @@ func newServiceInfo(port *localv1.PortMapping, service *localv1.Service, baseInf
 	info.serviceNameString = svcPortName.String()
 	return info
 }
+*/
 
 // internal struct for string service information
 type serviceInfo struct {
 	// important : Dont use the proxy.BaseServiceInfo - we want to return a locavnet1 service
 	*BaseServiceInfo
 	targetPort             int
-	externalIPs            []*externalIPInfo
-	loadBalancerIngressIPs []*loadBalancerIngressInfo
+	externalIPs            []*utilproxy.ExternalIPInfo
+	loadBalancerIngressIPs []*utilproxy.LoadBalancerIngressInfo
 	hnsID                  string
 	nodePorthnsID          string
 	policyApplied          bool
@@ -70,7 +75,7 @@ type serviceInfo struct {
 	localTrafficDSR        bool
 
 	// from the other internal struct? not sure why
-	serviceNameString string
+	//serviceNameString string
 }
 
 func (svcInfo *serviceInfo) deleteAllHnsLoadBalancerPolicy() {
@@ -83,12 +88,12 @@ func (svcInfo *serviceInfo) deleteAllHnsLoadBalancerPolicy() {
 	svcInfo.nodePorthnsID = ""
 
 	for _, externalIP := range svcInfo.externalIPs {
-		hns.deleteLoadBalancer(externalIP.hnsID)
-		externalIP.hnsID = ""
+		hns.deleteLoadBalancer(externalIP.HnsID)
+		externalIP.HnsID = ""
 	}
 	for _, lbIngressIP := range svcInfo.loadBalancerIngressIPs {
-		hns.deleteLoadBalancer(lbIngressIP.hnsID)
-		lbIngressIP.hnsID = ""
+		hns.deleteLoadBalancer(lbIngressIP.HnsID)
+		lbIngressIP.HnsID = ""
 	}
 }
 
@@ -231,18 +236,18 @@ func (info *BaseServiceInfo) HintsAnnotation() string {
 
 func (sct *ServiceChangeTracker) newBaseServiceInfo(port *localv1.PortMapping, service *localv1.Service) *BaseServiceInfo {
 	nodeLocalExternal := false
-	if ExternalPolicyLocal(service) {
+	if utilproxy.ExternalPolicyLocal(service) {
 		nodeLocalExternal = true
 	}
 
-	nodeLocalInternal := InternalPolicyLocal(service)
+	nodeLocalInternal := utilproxy.InternalPolicyLocal(service)
 
 	v1Proto := v1.ProtocolTCP
 	if port.Protocol == localv1.Protocol_UDP {
 		v1Proto = v1.ProtocolUDP
 	}
 
-	clusterIP := GetClusterIPByFamily(sct.ipFamily, service)
+	clusterIP := utilproxy.GetClusterIPByFamily(sct.ipFamily, service)
 	info := &BaseServiceInfo{
 		clusterIP:         net.ParseIP(clusterIP),
 		port:              int(port.Port),
@@ -263,11 +268,11 @@ func (sct *ServiceChangeTracker) newBaseServiceInfo(port *localv1.PortMapping, s
 	// services, this is actually expected. Hence we downgraded from reporting by events
 	// to just log lines with high verbosity
 
-	ipFamilyMap := MapIPsByIPFamily(service.IPs.ExternalIPs)
+	ipFamilyMap := utilproxy.MapIPsByIPFamily(service.IPs.ExternalIPs)
 	info.externalIPs = ipFamilyMap[sct.ipFamily]
 
 	// Log the IPs not matching the ipFamily
-	if ips, ok := ipFamilyMap[OtherIPFamily(sct.ipFamily)]; ok && len(ips) > 0 {
+	if ips, ok := ipFamilyMap[utilproxy.OtherIPFamily(sct.ipFamily)]; ok && len(ips) > 0 {
 		klog.V(4).Infof("service change tracker(%v) ignored the following external IPs(%s) for service %v/%v as they don't match IPFamily", sct.ipFamily, strings.Join(ips, ","), service.Namespace, service.Name)
 	}
 
@@ -322,7 +327,7 @@ type makeServicePortFunc func(*localv1.PortMapping, *localv1.Service, *BaseServi
 // ServiceChangeTracker carries state about uncommitted changes to an arbitrary number of
 // Services, keyed by their namespace and name.
 type ServiceChangeTracker struct {
-	lock sync.Mutex
+	lock sync.Mutex // nolint
 	// items maps a service to its serviceChange.
 	items map[types.NamespacedName]*serviceChange
 	// makeServiceInfo allows proxier to inject customized information when processing service.
@@ -401,7 +406,7 @@ type UpdateServiceMapResult struct {
 	HCServiceNodePorts map[types.NamespacedName]uint16
 	// UDPStaleClusterIP holds stale (no longer assigned to a Service) Service IPs that had UDP ports.
 	// Callers can use this to abort timeout-waits or clear connection-tracking information.
-	UDPStaleClusterIP sets.String
+	UDPStaleClusterIP sets.String // nolint
 }
 
 // ServiceMap maps a service to its ServicePort.
@@ -430,7 +435,7 @@ func (svcSnap *ServicesSnapshot) Update(changes *ServiceChangeTracker) (result U
 	return result
 }
 
-func (svcSnap *ServicesSnapshot) apply(changes *ServiceChangeTracker, UDPStaleClusterIP sets.String) {
+func (svcSnap *ServicesSnapshot) apply(changes *ServiceChangeTracker, UDPStaleClusterIP sets.String) { // nolint
 	for svcName, change := range changes.items {
 		svcSnap.merge(svcName, change, UDPStaleClusterIP)
 	}
@@ -439,7 +444,7 @@ func (svcSnap *ServicesSnapshot) apply(changes *ServiceChangeTracker, UDPStaleCl
 	//metrics.ServiceChangesPending.Set(0)
 }
 
-func (svcSnap *ServicesSnapshot) merge(svcName types.NamespacedName, other *serviceChange, UDPStaleClusterIP sets.String) {
+func (svcSnap *ServicesSnapshot) merge(svcName types.NamespacedName, other *serviceChange, UDPStaleClusterIP sets.String) { // nolint
 	// existingPorts is going to store all identifiers of all services in `other` ServiceMap.
 	if other == nil {
 		for _, svcInfo := range (*svcSnap)[svcName] {
@@ -461,7 +466,7 @@ func (sct *ServiceChangeTracker) serviceToServiceMap(service *localv1.Service) s
 	if service == nil {
 		return nil
 	}
-	clusterIP := GetClusterIPByFamily(sct.ipFamily, service)
+	clusterIP := utilproxy.GetClusterIPByFamily(sct.ipFamily, service)
 	if clusterIP == "" {
 		return nil
 	}
