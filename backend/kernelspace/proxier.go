@@ -355,7 +355,7 @@ func NewProxier(
 		if err != nil {
 			return nil, err
 		}
-		sourceVip := config.SourceVip
+		sourceVip = config.SourceVip
 		if len(sourceVip) == 0 {
 			return nil, fmt.Errorf("source-vip flag not set and is required for overlay networking")
 		}
@@ -581,6 +581,7 @@ func (proxier *Proxier) syncProxyRules() {
 	}
 	if strings.EqualFold(proxier.network.networkType, NETWORK_TYPE_OVERLAY) {
 		if _, ok := queriedEndpoints[proxier.sourceVip]; !ok {
+			klog.V(4).InfoS("newSourceVIP", "hnsNetworkName", hnsNetworkName, "proxier.sourceVip", proxier.sourceVip, "proxier.hostMac", proxier.hostMac, "proxier.nodeIP.String()", proxier.nodeIP.String())
 			_, err = newSourceVIP(hns, hnsNetworkName, proxier.sourceVip, proxier.hostMac, proxier.nodeIP.String())
 			if err != nil {
 				klog.ErrorS(err, "Source Vip endpoint creation failed")
