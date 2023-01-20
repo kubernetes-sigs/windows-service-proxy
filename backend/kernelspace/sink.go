@@ -70,7 +70,7 @@ func (s *Backend) DeleteEndpoint(namespace, serviceName, key string) {
 }
 
 func (s *Backend) SetService(svc *localv1.Service) {
-	klog.V(0).InfoS("SetService -> %v", svc)
+	klog.V(0).InfoS("SetService ->", "svc", svc)
 	proxier.serviceChanges.Update(svc)
 }
 

@@ -73,7 +73,7 @@ type serviceInfo struct {
 	hns                    HCNUtils
 	preserveDIP            bool
 	localTrafficDSR        bool
-
+	internalTrafficLocal   bool
 	// from the other internal struct? not sure why
 	//serviceNameString string
 }
