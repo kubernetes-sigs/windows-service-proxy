@@ -555,10 +555,10 @@ func (proxier *Proxier) syncProxyRules() {
 	// merge stale services gathered from updateEndpointsMap
 	for _, svcPortName := range endpointUpdateResult.StaleServiceNames {
 		klog.InfoS("echo %v", svcPortName)
-		//if svcInfo, ok := proxier.serviceMap[svcPortName]; ok && svcInfo != nil && svcInfo.Protocol() == v1.ProtocolUDP {
-		//	klog.V(2).InfoS("Stale udp service", "servicePortName", svcPortName, "clusterIP", svcInfo.ClusterIP())
-		//	staleServices.Insert(svcInfo.ClusterIP().String())
-		//}
+		//		if svcInfo, ok := proxier.serviceMap[svcPortName]; ok && svcInfo != nil && svcInfo.Protocol() == v1.ProtocolUDP {
+		//			klog.V(2).InfoS("Stale udp service", "servicePortName", svcPortName, "clusterIP", svcInfo.ClusterIP())
+		//			staleServices.Insert(svcInfo.ClusterIP().String())
+		//		}
 	}
 	// Query HNS for endpoints and load balancers
 	queriedEndpoints, err := hns.getAllEndpointsByNetwork(hnsNetworkName)
@@ -652,6 +652,12 @@ func (proxier *Proxier) syncProxyRules() {
 
 					if !ok {
 						klog.ErrorS(nil, "Failed to cast endpointsInfo", "serviceName", svcName)
+						continue
+					}
+
+					if svcInfo.internalTrafficLocal && svcInfo.localTrafficDSR && !ep.GetIsLocal() {
+						// No need to use or create a remote endpoint when internal and external traffic policy is remote
+						klog.V(3).InfoS("Skipping the endpoint. Both internalTraffic and external traffic policies are local", "EpIP", ep.ip, "EpPortP", ep.port)
 						continue
 					}
 
@@ -794,8 +800,15 @@ func (proxier *Proxier) syncProxyRules() {
 				klog.InfoS("Session Affinity is not supported on this version of Windows")
 			}
 
+			// clusterIPEndpoints is the endpoint list used for created ClusterIP loadbalancer
+			clusterIPEndpoints := hnsEndpoints
+			if svcInfo.internalTrafficLocal {
+				// Take local endpoints for clusterip loadbalancer when internal traffic policy is local.
+				clusterIPEndpoints = hnsLocalEndpoints
+			}
+
 			hnsLoadBalancer, err := hns.getLoadBalancer(
-				hnsEndpoints,
+				clusterIPEndpoints,
 				loadBalancerFlags{isDSR: proxier.isDSR, isIPv6: proxier.isIPv6Mode, sessionAffinity: sessionAffinityClientIP},
 				sourceVip,
 				svcInfo.ClusterIP().String(),

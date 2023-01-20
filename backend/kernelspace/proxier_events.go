@@ -24,7 +24,9 @@ import (
 	netutils "k8s.io/utils/net"
 	"sync/atomic"
 
+	"github.com/Microsoft/hcsshim/hcn"
 	"k8s.io/apimachinery/pkg/types"
+	klog "k8s.io/klog/v2"
 	"sigs.k8s.io/kpng/api/localv1"
 
 	utilproxy "sigs.k8s.io/windows-service-proxy/pkg/util"
@@ -172,24 +174,26 @@ func (proxier *Proxier) newEndpointInfo(baseInfo *BaseEndpointInfo, _ *ServicePo
 func (proxier *Proxier) newServiceInfo(port *localv1.PortMapping, service *localv1.Service, baseInfo *BaseServiceInfo) ServicePort {
 	info := &serviceInfo{BaseServiceInfo: baseInfo}
 	preserveDIP := service.Annotations["preserve-destination"] == "true"
-	//localTrafficDSR := service.ExternalTrafficPolicy == v1.ServiceExternalTrafficPolicyTypeLocal
-	//err := hcn.DSRSupported()
-	//if err != nil {
-	//    preserveDIP = false
-	//    localTrafficDSR := false
-	//}
-	localTrafficDSR := false
+	localTrafficDSR := service.ExternalTrafficToLocal      // TODO: verify this is the correct field in the KPNG localv1 API
+	internalTrafficLocal := service.InternalTrafficToLocal // TODO: verify this is the correct field in the KPNG localv1 API
+
+	err := hcn.DSRSupported()
+	if err != nil {
+		preserveDIP = false
+		localTrafficDSR = false
+	}
 	// targetPort is zero if it is specified as a name in port.TargetPort.
 	// Its real value would be got later from endpoints.
-	targetPort := 0
-	//if port.TargetPort.Type == intstr.Int {
-	targetPort = int(port.TargetPort)
-	//}
+	// TODO: Not make sure something actually looks up the port from the endpoint somewhere??
+	targetPort := port.TargetPort
 
 	info.preserveDIP = preserveDIP
-	info.targetPort = targetPort
+	info.targetPort = int(targetPort)
 	info.hns = proxier.hns
 	info.localTrafficDSR = localTrafficDSR
+	info.internalTrafficLocal = internalTrafficLocal
+
+	klog.V(3).InfoS("Flags enabled for service", "service", service.Name, "localTrafficDSR", localTrafficDSR, "internalTrafficLocal", internalTrafficLocal, "preserveDIP", preserveDIP)
 
 	for _, eip := range service.IPs.ExternalIPs.V4 {
 		info.externalIPs = append(info.externalIPs, &utilproxy.ExternalIPInfo{IP: eip})
@@ -198,11 +202,14 @@ func (proxier *Proxier) newServiceInfo(port *localv1.PortMapping, service *local
 		info.externalIPs = append(info.externalIPs, &utilproxy.ExternalIPInfo{IP: eip})
 	}
 
-	//for _, ingress := range service.Status.LoadBalancer.Ingress {
-	//    if netutils.ParseIPSloppy(ingress.IP) != nil {
-	//        info.loadBalancerIngressIPs = append(info.loadBalancerIngressIPs, &loadBalancerIngressInfo{ip: ingress.IP})
-	//    }
-	//}
+	if service.IPs.LoadBalancerIPs != nil {
+		for _, lbip := range service.IPs.LoadBalancerIPs.V4 {
+			info.loadBalancerIngressIPs = append(info.loadBalancerIngressIPs, &utilproxy.LoadBalancerIngressInfo{IP: lbip})
+		}
+		for _, lbip := range service.IPs.LoadBalancerIPs.V6 {
+			info.loadBalancerIngressIPs = append(info.loadBalancerIngressIPs, &utilproxy.LoadBalancerIngressInfo{IP: lbip})
+		}
+	}
 	return info
 }
 
