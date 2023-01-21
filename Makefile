@@ -26,7 +26,7 @@ GOLANGCI_LINT_BIN := golangci-lint
 GOLANGCI_LINT := $(abspath $(TOOLS_BIN_DIR)/$(GOLANGCI_LINT_BIN))
 
 VERSION ?= $(shell git describe --tags --always `git rev-parse HEAD`)
-STAGING_REGISTRY ?= gcr.io/k8s-staging-windows-svc-proxy
+STAGING_REGISTRY ?= gcr.io/k8s-staging-win-svc-proxy
 REGISRY ?= 
 
 all: build
