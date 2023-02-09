@@ -35,7 +35,13 @@ while [ $# -ge 1 ]; do
 done
 
 output="type=docker,dest=./output/export.tar"
-mkdir -p ./output
+
+if [[ "$push" == "1" ]]; then
+  output="type=registry"
+else
+  # ensure output directory exists
+  mkdir -p ./output
+fi
 
 : "${REPOSITORY?"Need to set REPOSITORY"}"
 VERSION=${VERSION:-"latest"}
@@ -45,15 +51,9 @@ set -x
 docker buildx create --name img-builder --use --platform windows/amd64
 trap 'docker buildx rm img-builder' EXIT
 
-docker buildx build --platform windows/amd64 --output=$output -f Dockerfile.windows -t "$REPOSITORY"/kpng:"$VERSION" .
-
-if [[ "$push" == "1" ]]; then
-  docker import ./output/export.tar "$REPOSITORY"/kpng:"$VERSION"
-  docker push "$REPOSITORY"/kpng:"$VERSION"
-
-  if [[ "$VERSION" != "latest" ]]; then
-    # also push :latest tag
-    docker tag "$REPOSITORY"/kpng:"$VERSION" "$REPOSITORY"/kpng:latest
-    docker push "$REPOSITORY"/kpng:latest
-  fi
+tags=" -t ${REPOSITORY}/kpng:${VERSION}"
+if [[ "$VERSION" != "latest" ]]; then
+  tags+=" -t ${REPOSITORY}/kpng:latest"
 fi
+
+docker buildx build --platform windows/amd64 --output=$output -f Dockerfile.windows $tags . 
