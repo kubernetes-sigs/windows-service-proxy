@@ -22,18 +22,18 @@ package kernelspace
 import (
 	"context"
 	"fmt"
+	"net"
+	"os"
+	"strconv"
+	"time"
+
 	"github.com/prometheus/client_golang/prometheus"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/util/wait"
-	"net"
-	"os"
 	"sigs.k8s.io/kpng/client/backendcmd"
 	"sigs.k8s.io/kpng/client/localsink"
 	kpngmetrics "sigs.k8s.io/kpng/server/pkg/metrics"
-	"sigs.k8s.io/windows-service-proxy/backend/kernelspace/metrics"
 	"sigs.k8s.io/windows-service-proxy/pkg/healthcheck"
-	"strconv"
-	"time"
 
 	klog "k8s.io/klog/v2"
 )
@@ -50,7 +50,7 @@ var (
 	enableDSR          = flag.Bool("enable-dsr", true, "Set this flag to enable DSR")
 
 	healthzBindAddress = flag.String("healthz-bind-address", "0.0.0.0:10256", "The IP address with port for the health check server to serve on (set to '0.0.0.0:10256' for all IPv4 interfaces and '[::]:10256' for all IPv6 interfaces). Set empty to disable.")
-	metricsBindAddress = flag.String("metrics-bind-address", "0.0.0.0:10257", "The IP address with port for the metrics server to serve on (set to '0.0.0.0:10257' for all IPv4 interfaces and '[::]:10257' for all IPv6 interfaces). Set empty to disable.")
+	metricsBindAddress = flag.String("metrics-bind-address", "0.0.0.0:10257", "The IP address with port for the metrics server to serve on (set to '0.0.0.0:10257' for all IPv4 interfaces and '[::]:10257' for all IPv6 interfaces). Set empty to disable.") // nolint
 )
 
 type Backend struct {
@@ -109,7 +109,7 @@ func (s *Backend) Setup() {
 	}
 
 	serveHealthz(healthzServer, chErr)
-	serveMetrics()
+	//serveMetrics()
 
 	proxier, err = NewProxier(
 		syncPeriod,
@@ -124,7 +124,7 @@ func (s *Backend) Setup() {
 		winkernelConfig,
 		healthzPort)
 
-	metrics.RegisterMetrics()
+	//metrics.RegisterMetrics()
 
 	if err != nil {
 		klog.ErrorS(err, "Failed to create an instance of NewProxier")
@@ -134,7 +134,7 @@ func (s *Backend) Setup() {
 	go proxier.SyncLoop()
 }
 
-func serveMetrics() {
+func serveMetrics() { // nolint
 	ctx := context.Background()
 	if len(*metricsBindAddress) != 0 {
 		prometheus.MustRegister(kpngmetrics.Kpng_k8s_api_events)

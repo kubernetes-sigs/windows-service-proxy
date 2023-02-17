@@ -17,15 +17,16 @@ limitations under the License.
 package metrics
 
 import (
+	"sync"
+
 	"github.com/prometheus/client_golang/prometheus"
 	"k8s.io/kubernetes/pkg/proxy/metrics"
-	"sync"
 )
 
 var registerMetricsOnce sync.Once // nolint
 
 // RegisterMetrics registers kube-proxy metrics for Windows modes.
-func RegisterMetrics() {
+func RegisterMetrics() { // nolint
 	registerMetricsOnce.Do(func() {
 		prometheus.MustRegister(metrics.SyncProxyRulesLastQueuedTimestamp)
 		prometheus.MustRegister(metrics.SyncProxyRulesLatency)
