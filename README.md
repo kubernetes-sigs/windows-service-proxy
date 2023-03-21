@@ -2,6 +2,10 @@
 
 Home for an out of tree Windows kube-proxy implementation based on KPNG.
 
+# Is this the official windows kube proxy ? 
+
+No.  Not yet.  Maybe someday !
+
 # Testing
 
 We're in the process of building development tooling, but for now... 
