@@ -1,16 +1,28 @@
 $ErrorActionPrefernce = "Stop"
 
 # Check for required env vars
-foreach ($var in @("CLUSTER_CIDR", "NETWORK_NAME", "NODE_IP")) {
+foreach ($var in @("CLUSTER_CIDR", "KUBE_NETWORK", "NODE_IP")) {
     if ([System.Environment]::GetEnvironmentVariable($var) -EQ $null) {
         throw "Required envionment variable '$var' is not set!"
     }
 }
 
-Write-Host "Importing hns.psm1"
-Import-Module C:\hpc\hns.psm1
+# copy token for client-go incluster config
+# C:\hpc\<container_id>\var\run\secrets\kubernetes.io\serviceaccount\token -> C:\var\run\secrets\kubernetes.io\serviceaccount\token
+if (-not(Test-Path -Path C:\var\run)) {
+    Write-Host "Copying secrets"
+    Copy-Item -Recurse .\var\run  C:\var\run
+}
 
-$NetworkName = $env:NETWORK_NAME
+
+#Write-Host "Going to sleep"
+#Start-Sleep -Seconds 36000
+
+Write-Host "Importing hns.psm1"
+Import-Module ./hns.psm1
+
+
+$NetworkName = $env:KUBE_NETWORK
 Write-Host "Waiting for network '$NetworkName' to be available..."
 while (-Not (Get-HnsNetwork | ? Name -EQ $NetworkName)) {
     Write-Debug "waiting for HNS network..."
@@ -21,8 +33,9 @@ Write-Host "Found HNS network '$NetworkName'"
 $argList = @(`
     "kube", `
     "to-local", `
-    "to-winkernel", `
-    "-v=5", `
+#    "to-winkernel", `
+    "to-winkernelfs", `
+    "-v=4", `
     "--cluster-cidr=${env:CLUSTER_CIDR}", `
     "--bind-address=${env:NODE_IP}" `
     )
@@ -40,5 +53,5 @@ if ($network.Type -EQ "overlay") {
     $argList += "--source-vip=$sourceVip"
 }
 
-Write-Host "Running c:\hpc\kpng.exe $argList"
-Invoke-Expression "c:\hpc\kpng.exe $argList"
+Write-Host "Running ./kpng.exe $argList"
+Invoke-Expression "./kpng.exe $argList"
