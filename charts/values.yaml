@@ -1,0 +1,50 @@
+# Default values for kube-proxy.
+# This is a YAML-formatted file.
+# Declare variables to be passed into your templates.
+
+image:
+  repository: gcr.io/k8s-staging-win-svc-proxy/kube-proxy
+  pullPolicy: Always
+  tag: "latest"
+
+#nameOverride: "test-proxy"
+namespace: kube-system
+serviceAccount: kube-proxy
+
+securityContext: 
+  runAsUserName: NT AUTHORITY\\system
+
+loglevel: 4
+
+cni:
+  WinOverlay: true
+  
+sourcevipImage:
+  repository: gcr.io/k8s-staging-win-svc-proxy/kube-proxy:sourcevip-latest
+  pullPolicy: Always
+  tag: "latest"
+  provider: calico
+  securityContext:
+    runAsUserName: NT AUTHORITY\\system
+
+imagePullSecrets: []
+
+podAnnotations: {}
+
+resources: {}
+  # We usually recommend not to specify default resources and to leave this as a conscious
+  # choice for the user. This also increases chances charts run on environments with little
+  # resources, such as Minikube. If you do want to specify resources, uncomment the following
+  # lines, adjust them as necessary, and remove the curly braces after 'resources:'.
+  # limits:
+  #   cpu: 200m
+  #   memory: 128Mi
+  # requests:
+  #   cpu: 200m
+  #   memory: 128Mi
+
+nodeSelector: {}
+
+tolerations: []
+
+affinity: {}

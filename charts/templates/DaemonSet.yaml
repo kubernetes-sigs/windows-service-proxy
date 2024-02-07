@@ -1,0 +1,97 @@
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: {{ include "kube-proxy.name" . }}
+  labels:
+    k8s-app: {{ include "kube-proxy.name" . }}
+    {{- include "kube-proxy.labels" . | nindent 4 }}
+  namespace: {{ .Values.namespace }}
+spec:
+  selector:
+    matchLabels:
+      k8s-app: {{ include "kube-proxy.name" . }}
+      {{- include "kube-proxy.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      {{- with .Values.podAnnotations }}
+      annotations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      labels:
+        k8s-app: {{ include "kube-proxy.name" . }}
+        {{- include "kube-proxy.selectorLabels" . | nindent 8 }}
+    spec:
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      serviceAccountName: {{ .Values.serviceAccount }}
+      securityContext:
+        windowsOptions:
+          hostProcess: true
+          runAsUserName: "{{ .Values.securityContext.runAsUserName }}"
+      hostNetwork: true
+      {{- if .Values.cni.WinOverlay }}
+      initContainers:
+      - name: setup-source-vip
+        image: {{ .Values.sourcevipImage.repository }}:{{ .Values.sourcevipImage.tag }}
+        imagePullPolicy: {{ .Values.sourcevipImage.pullPolicy }}
+        args: ["{{ .Values.sourcevipImage.provider }}"]
+        securityContext:
+            windowsOptions:
+              hostProcess: true
+              runAsUserName: "{{ .Values.sourcevipImage.securityContext.runAsUserName }}"
+      {{- end }}
+      containers:
+        - name: {{ .Chart.Name }}
+          image: {{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          args:
+          - --hostname-override=$(NODE_NAME)
+          - --kubeconfig=c:/kubeconfig.conf
+          - --v={{ .Values.loglevel }}
+          - --proxy-mode=kernelspace
+          - --enable-dsr=true
+          - --feature-gates=WinDSR=true{{- if .Values.cni.WinOverlay }},WinOverlay=true
+          - --source-vip=%SOURCE_VIP%
+          {{- end }}
+          env:
+            - name: NODE_NAME
+              valueFrom:
+                fieldRef:
+                  apiVersion: v1
+                  fieldPath: spec.nodeName
+            - name: POD_IP
+              valueFrom:
+                fieldRef:
+                  fieldPath: status.podIP
+            - name: KUBE_NETWORK
+              value: Calico
+          volumeMounts:
+          - mountPath: /kubeconfig.conf
+            name: kube-proxy
+            subPath: kubeconfig.conf
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}
+      nodeSelector:
+        kubernetes.io/os: windows
+        {{- with .Values.nodeSelector }}
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      tolerations:
+      - key: CriticalAddonsOnly
+        operator: Exists
+      - operator: Exists
+        {{- with .Values.tolerations }}
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      volumes:
+      - configMap:
+          name: kube-proxy
+        name: kube-proxy
+  updateStrategy:
+    type: RollingUpdate
