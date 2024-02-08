@@ -51,9 +51,10 @@ set -x
 docker buildx create --name img-builder --use --platform windows/amd64
 trap 'docker buildx rm img-builder' EXIT
 
-tags=" -t ${REPOSITORY}/kpng:${VERSION}"
+tags=" -t ${REPOSITORY}/kube-proxy:${VERSION}"
 if [[ "$VERSION" != "latest" ]]; then
-  tags+=" -t ${REPOSITORY}/kpng:latest"
+  tags+=" -t ${REPOSITORY}/kube-proxy:latest"
 fi
 
-docker buildx build --platform windows/amd64 --output=$output -f Dockerfile.windows $tags . 
+docker buildx build --platform windows/amd64 --output=$output --build-arg=KUBEPROXY_VERSION=$VERSION -f Dockerfile $tags . 
+docker buildx build --platform windows/amd64 --output=$output -f Dockerfile.sourcevip -t ${REPOSITORY}/kube-proxy:sourcevip-$VERSION .

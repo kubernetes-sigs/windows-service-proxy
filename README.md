@@ -1,17 +1,14 @@
 # windows-service-proxy
 
-Home for an out of tree Windows kube-proxy implementation based on KPNG.
+Home for Docker files and Helm Chart for build and deploying winkernal Kube-proxy as a HostProcess Container
 
 # Is this the official windows kube proxy ? 
 
-No.  Not yet.  Maybe someday !
+The source code for kube-proxy is in tree.  We don't build kube-proxy here, only package it into a HostProcess Container and provide a Helm chart to easy deployment. 
 
 # Testing
 
-We're in the process of building development tooling, but for now... 
-
-- The hack directory can build and compile this as a windows container.  
-- Then you can run the recipes in the `deploy/` directory 
+This image will be used in Cluster API for Azure e2e tests and sig-windows CI.
 
 ## Community, discussion, contribution, and support
 

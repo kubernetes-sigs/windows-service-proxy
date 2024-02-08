@@ -1,0 +1,15 @@
+ARG BASE="mcr.microsoft.com/oss/kubernetes/windows-host-process-containers-base-image:v0.1.0"
+
+FROM --platform=linux/amd64 curlimages/curl as bins
+
+WORKDIR /bins
+RUN curl -LO https://raw.githubusercontent.com/microsoft/SDN/master/Kubernetes/windows/hns.psm1
+
+FROM $BASE
+
+ENV PATH="C:\Windows\system32;C:\Windows;C:\WINDOWS\System32\WindowsPowerShell\v1.0\;"
+
+ADD source-vip.ps1 /source-vip.ps1
+COPY --from=bins /bins/hns.psm1 /hns.psm1
+WORKDIR /hpc
+ENTRYPOINT ["powershell /c c:/hpc/source-vip.ps1"]
