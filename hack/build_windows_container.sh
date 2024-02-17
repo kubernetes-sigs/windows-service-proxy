@@ -46,15 +46,40 @@ fi
 : "${REPOSITORY?"Need to set REPOSITORY"}"
 VERSION=${VERSION:-"latest"}
 
-set -x
 
 docker buildx create --name img-builder --use --platform windows/amd64
 trap 'docker buildx rm img-builder' EXIT
 
-tags=" -t ${REPOSITORY}/kube-proxy:${VERSION}"
+set -x
+
+kp_version=$(cat ./kube-proxy-dockerfile-version)
+mapfile -t KUBEPROXY_VERSIONS  < kube-proxy-versions
+
+for kpv in "${KUBEPROXY_VERSIONS[@]}"; do
+    echo "$kpv"
+    tags=""
+
+    docker manifest inspect ${REPOSITORY}/kube-proxy:v${kpv}-$kp_version && true
+    if [[ $? -ne 0 ]]; then
+      tags+=" -t ${REPOSITORY}/kube-proxy:v${kpv}-$kp_version"
+    fi
+
+    tags+=" -t ${REPOSITORY}/kube-proxy:v${kpv}-$VERSION"
+    if [[ "$VERSION" != "latest" ]]; then
+      tags+=" -t ${REPOSITORY}/kube-proxy:v${kpv}-latest"
+    fi
+
+    docker buildx build --platform windows/amd64 --output=$output --build-arg=KUBEPROXY_VERSION=$kpv --build-arg=COMMIT=$COMMIT -f Dockerfile $tags . 
+done
+
+sourcevip_version=$(cat ./sourcevip-version)
+tags="-t ${REPOSITORY}/sourcevip:$VERSION"
 if [[ "$VERSION" != "latest" ]]; then
-  tags+=" -t ${REPOSITORY}/kube-proxy:latest"
+      tags+=" -t ${REPOSITORY}/sourcevip:latest"
 fi
 
-docker buildx build --platform windows/amd64 --output=$output --build-arg=KUBEPROXY_VERSION=$VERSION -f Dockerfile $tags . 
-docker buildx build --platform windows/amd64 --output=$output -f Dockerfile.sourcevip -t ${REPOSITORY}/kube-proxy:sourcevip-$VERSION .
+docker manifest inspect ${REPOSITORY}/sourcevip:v$sourcevip_version && true
+if [[ $? -ne 0 ]]; then
+  tags+=" -t ${REPOSITORY}/sourcevip:v$sourcevip_version"
+fi
+docker buildx build --platform windows/amd64 --output=$output -f ./sourcevip/Dockerfile.sourcevip $tags  ./sourcevip

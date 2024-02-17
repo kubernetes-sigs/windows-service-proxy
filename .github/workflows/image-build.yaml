@@ -14,6 +14,26 @@ jobs:
     runs-on: ubuntu-22.04
     steps:
       - uses: actions/checkout@v2
+      - name: check if dockerfile changed
+        run: |
+          git diff --quiet HEAD main -- Dockerfile
+          dockerfile_changed=$?
+          git diff --quiet HEAD main -- kube-proxy-dockerfile-version
+          kube_proxy_version_changed=$?
+          if [[ ! $dockerfile_changed -eq $kube_proxy_version_changed ]]; then
+            echo "Either Dockefile changed or kube-proxy-dockerfile-version changed, but not both. Exiting."
+            exit
+          fi
+      - name: check if sourcevip files  changed
+        run: |
+          git diff --quiet HEAD main -- sourcevip
+          dockerfile_changed=$?
+          git diff --quiet HEAD main -- sourcevip-version
+          source_vip_version_changed =$?
+          if [[ ! $dockerfile_changed -eq $source_vip_version_changed ]]; then
+            echo "Either Source-vip files changed or source-version changed, but not both. Exiting."
+            exit
+          fi
       - name: lint
         run: |
           make lint

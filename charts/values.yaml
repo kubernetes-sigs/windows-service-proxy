@@ -17,10 +17,10 @@ securityContext:
 loglevel: 4
 
 cni:
-  WinOverlay: true
+  WinOverlay: falses
   
 sourcevipImage:
-  repository: gcr.io/k8s-staging-win-svc-proxy/kube-proxy:sourcevip-latest
+  repository: gcr.io/k8s-staging-win-svc-proxy/source-vip:latest
   pullPolicy: Always
   tag: "latest"
   provider: calico
