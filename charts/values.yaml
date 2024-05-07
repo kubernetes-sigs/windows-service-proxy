@@ -11,14 +11,16 @@ image:
 namespace: kube-system
 serviceAccount: kube-proxy
 
-securityContext: 
+securityContext:
   runAsUserName: NT AUTHORITY\\system
 
 loglevel: 4
 
 cni:
   WinOverlay: true
-  
+  # Adjust this value to match Network name created by CNI provider
+  kubeNetwork: "Calico"
+
 sourcevipImage:
   repository: gcr.io/k8s-staging-win-svc-proxy/kube-proxy:sourcevip-latest
   pullPolicy: Always
